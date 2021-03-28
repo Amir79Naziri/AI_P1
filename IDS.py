@@ -26,6 +26,21 @@ def evaluate_neighbour(state, cor):
     return up, down, left, right
 
 
+def evaluate_direction(a, b):
+    direction = ""
+    if a == 1:
+        direction = 'D'
+    elif a == -1:
+        direction = 'U'
+    else:
+        if b == 1:
+            direction = 'R'
+        else:
+            direction = 'L'
+
+    return direction
+
+
 def butter_destination_successor(state, robot_cor, butter_cor):
     result = []
     up, down, left, right = evaluate_neighbour(state, butter_cor)
@@ -42,34 +57,42 @@ def butter_destination_successor(state, robot_cor, butter_cor):
     if right is None:
         left = None
 
-    # TODO : robot to dest
+
 
     def new_state(a, b):
         n_state = state.copy()
         n_state[butter_cor[0] + a, butter_cor[1] + b] += 'b'
         n_state[butter_cor[0], butter_cor[1]] = n_state[butter_cor[0], butter_cor[1]][:-1] + 'r'
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
-        return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1])
+
+        dst_state = state.copy()
+        dst_state[robot_cor[0], robot_cor[1]] = dst_state[robot_cor[0], robot_cor[1]][:-1]
+        dst_state[butter_cor[0] - a, butter_cor[1] - b] += 'r'
+
+        res = ids(Node(state, None), [Node(dst_state, None)], robot_butter_successor, (state, robot_cor))
+
+        return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1]), \
+               (evaluate_direction(a, b),), (res, )
 
     if up is not None:
-        # check robot_dest IDS
-        if True:
-            result.append(new_state(-1, 0))
+        data = new_state(-1, 0)
+        if data[4][0] is not None:
+            result.append(data)
 
     if down is not None:
-        # check robot_dest IDS
-        if True:
-            result.append(new_state(1, 0))
+        data = new_state(1, 0)
+        if data[4][0] is not None:
+            result.append(data)
 
     if left is not None:
-        # check robot_dest IDS
-        if True:
-            result.append(new_state(0, -1))
+        data = new_state(0, -1)
+        if data[4][0] is not None:
+            result.append(data)
 
     if right is not None:
-        # check robot_dest IDS
-        if True:
-            result.append(new_state(0, 1))
+        data = new_state(0, 1)
+        if data[4][0] is not None:
+            result.append(data)
 
     return result
 
@@ -106,29 +129,35 @@ def goal(src_node, dst_nodes):
     return False
 
 
-def dls(node, dst_nodes, successor, successor_args, visited, limit):
+def dls(node, dst_nodes, successor, successor_args, visited, limit, stack):
     if goal(node, dst_nodes):
-        pass
-        # TODO path
+        return stack
 
-    # visited[] = node
+    visited.add(repr(node.get_state())[6:-15])
+
     if limit <= 0:
         return None
 
     for data in successor(successor_args):
+
+        stack.append(data[4][0])
+        stack.append(data[3][0])
         cur_node = Node(data[0][0], node)
         cur_successor_args = data[0][0], data[2], data[1]
-        if cur_node not in visited:
-            res = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1)
+        if not (repr(cur_node.get_state())[6:-15] in visited):
+            res = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1, stack)
             if res is not None:
                 return res
+        del cur_node
+        stack.pop()
+        stack.pop()
     return None
 
 
-def ids(node, dst_node, successor, successor_args):
-    visited = {}
+def ids(node, dst_nodes, successor, successor_args):
+    visited = set()
     for limit in range(1, node.get_state().shape[0] * node.get_state().shape[1]):
-        res = dls(node, dst_node, successor, successor_args, visited, limit)
+        res = dls(node, dst_nodes, successor, successor_args, visited, limit, [])
         if res is not None:
             return res
     return None
@@ -138,7 +167,6 @@ class Node:
     def __init__(self, state, parent):
         self.__state = state
         self.__parent = parent
-        self.__expanded = False
 
     def get_state(self):
         return self.__state
@@ -146,20 +174,11 @@ class Node:
     def get_parent(self):
         return self.__parent
 
-    def is_expanded(self):
-        return self.__expanded
-
-    def expand(self):
-        self.__expanded = True
-
     def __eq__(self, other):
         if isinstance(other, Node):
-            return np.array_equal(self, other)
+            return np.array_equal(self.__state, other.get_state())
         else:
             return False
-
-    def __hash__(self):
-        return hash(self.__state)
 
 
 def input_parser():
@@ -179,17 +198,14 @@ def main():
     butter_cor = ()
     print(init_state)
     print("\n-------")
-    # for i in range(init_state.shape[0]):
-    #     for j in range(init_state.shape[1]):
-    #         if 'r' in init_state[i, j]:
-    #             robot_cor = i, j
-    #         elif 'b' in init_state[i, j]:
-    #             butter_cor = i, j
-    #
-    # states = butter_destination_successor(init_state, butter_cor, robot_cor)
-    # for state in states:
-    #     print(state)
-    #     print("\n------")
+    for i in range(init_state.shape[0]):
+        for j in range(init_state.shape[1]):
+            if 'r' in init_state[i, j]:
+                robot_cor = i, j
+            elif 'b' in init_state[i, j]:
+                butter_cor = i, j
+
+    print(ids())
 
 
 if __name__ == '__main__':
