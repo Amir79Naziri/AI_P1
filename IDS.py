@@ -26,8 +26,8 @@ def evaluate_neighbour(state, cor):
     return up, down, left, right
 
 
-def butter_destination_successor(state, butter_cor, robot_cor):
-    states = []
+def butter_destination_successor(state, robot_cor, butter_cor):
+    result = []
     up, down, left, right = evaluate_neighbour(state, butter_cor)
 
     if up is None:
@@ -49,32 +49,32 @@ def butter_destination_successor(state, butter_cor, robot_cor):
         n_state[butter_cor[0] + a, butter_cor[1] + b] += 'b'
         n_state[butter_cor[0], butter_cor[1]] = n_state[butter_cor[0], butter_cor[1]][:-1] + 'r'
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
-        return n_state
+        return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1])
 
     if up is not None:
         # check robot_dest IDS
         if True:
-            states.append(new_state(-1, 0))
+            result.append(new_state(-1, 0))
 
     if down is not None:
         # check robot_dest IDS
         if True:
-            states.append(new_state(1, 0))
+            result.append(new_state(1, 0))
 
     if left is not None:
         # check robot_dest IDS
         if True:
-            states.append(new_state(0, -1))
+            result.append(new_state(0, -1))
 
     if right is not None:
         # check robot_dest IDS
         if True:
-            states.append(new_state(0, 1))
+            result.append(new_state(0, 1))
 
-    return states
+    return result
 
 
-def robot_butter_successor(state, robot_cor):
+def robot_butter_successor(state, robot_cor, butter_cor=None):
     states = []
     up, down, left, right = evaluate_neighbour(state, robot_cor)
 
@@ -82,7 +82,7 @@ def robot_butter_successor(state, robot_cor):
         n_state = state.copy()
         n_state[robot_cor[0] + a, robot_cor[1] + b] += 'r'
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
-        return n_state
+        return (n_state,), (None, None), (robot_cor[0] + a, robot_cor[1] + b)
 
     if up is not None:
         states.append(new_state(-1, 0))
@@ -106,8 +106,32 @@ def goal(src_node, dst_nodes):
     return False
 
 
-def ids(node, dst_node, successor, limit):
-    pass
+def dls(node, dst_nodes, successor, successor_args, visited, limit):
+    if goal(node, dst_nodes):
+        pass
+        # TODO path
+
+    # visited[] = node
+    if limit <= 0:
+        return None
+
+    for data in successor(successor_args):
+        cur_node = Node(data[0][0], node)
+        cur_successor_args = data[0][0], data[2], data[1]
+        if cur_node not in visited:
+            res = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1)
+            if res is not None:
+                return res
+    return None
+
+
+def ids(node, dst_node, successor, successor_args):
+    visited = {}
+    for limit in range(1, node.get_state().shape[0] * node.get_state().shape[1]):
+        res = dls(node, dst_node, successor, successor_args, visited, limit)
+        if res is not None:
+            return res
+    return None
 
 
 class Node:
@@ -127,6 +151,15 @@ class Node:
 
     def expand(self):
         self.__expanded = True
+
+    def __eq__(self, other):
+        if isinstance(other, Node):
+            return np.array_equal(self, other)
+        else:
+            return False
+
+    def __hash__(self):
+        return hash(self.__state)
 
 
 def input_parser():
@@ -157,9 +190,6 @@ def main():
     # for state in states:
     #     print(state)
     #     print("\n------")
-
-    fringe = []
-    visited = {}
 
 
 if __name__ == '__main__':
