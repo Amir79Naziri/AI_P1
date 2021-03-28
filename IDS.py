@@ -1,6 +1,24 @@
 import numpy as np
 
 
+class Node:
+    def __init__(self, state, parent):
+        self.__state = state
+        self.__parent = parent
+
+    def get_state(self):
+        return self.__state
+
+    def get_parent(self):
+        return self.__parent
+
+    def __eq__(self, other):
+        if isinstance(other, Node):
+            return np.array_equal(self.__state, other.get_state())
+        else:
+            return False
+
+
 def evaluate_neighbour(state, cor):
     up, down, left, right = None, None, None, None
     if cor[0] - 1 >= 0:
@@ -27,7 +45,6 @@ def evaluate_neighbour(state, cor):
 
 
 def evaluate_direction(a, b):
-    direction = ""
     if a == 1:
         direction = 'D'
     elif a == -1:
@@ -57,8 +74,6 @@ def butter_destination_successor(state, robot_cor, butter_cor):
     if right is None:
         left = None
 
-
-
     def new_state(a, b):
         n_state = state.copy()
         n_state[butter_cor[0] + a, butter_cor[1] + b] += 'b'
@@ -69,10 +84,10 @@ def butter_destination_successor(state, robot_cor, butter_cor):
         dst_state[robot_cor[0], robot_cor[1]] = dst_state[robot_cor[0], robot_cor[1]][:-1]
         dst_state[butter_cor[0] - a, butter_cor[1] - b] += 'r'
 
-        res = ids(Node(state, None), [Node(dst_state, None)], robot_butter_successor, (state, robot_cor))
+        res, _, _, _ = ids(Node(state, None), [Node(dst_state, None)], robot_butter_successor, (state, robot_cor))
 
         return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1]), \
-               (evaluate_direction(a, b),), (res, )
+               (evaluate_direction(a, b),), (res,)
 
     if up is not None:
         data = new_state(-1, 0)
@@ -105,7 +120,7 @@ def robot_butter_successor(state, robot_cor, butter_cor=None):
         n_state = state.copy()
         n_state[robot_cor[0] + a, robot_cor[1] + b] += 'r'
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
-        return (n_state,), (None, None), (robot_cor[0] + a, robot_cor[1] + b)
+        return (n_state,), (None, None), (robot_cor[0] + a, robot_cor[1] + b), (None,)
 
     if up is not None:
         states.append(new_state(-1, 0))
@@ -129,9 +144,9 @@ def goal(src_node, dst_nodes):
     return False
 
 
-def dls(node, dst_nodes, successor, successor_args, visited, limit, stack):
+def dls(node, dst_nodes, successor, successor_args, visited, limit, stack, cost=0):
     if goal(node, dst_nodes):
-        return stack
+        return stack, node, cost
 
     visited.add(repr(node.get_state())[6:-15])
 
@@ -140,45 +155,66 @@ def dls(node, dst_nodes, successor, successor_args, visited, limit, stack):
 
     for data in successor(successor_args):
 
-        stack.append(data[4][0])
+        if data[4][0] is not None:
+            stack.append(data[4][0])
+            cost += len(data[4][0])
         stack.append(data[3][0])
+        cost += 1
         cur_node = Node(data[0][0], node)
         cur_successor_args = data[0][0], data[2], data[1]
         if not (repr(cur_node.get_state())[6:-15] in visited):
-            res = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1, stack)
+            res, goal_node, cost = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1, stack,
+                                       cost)
             if res is not None:
-                return res
+                return res, goal_node, cost
         del cur_node
         stack.pop()
-        stack.pop()
+        cost -= 1
+        if data[4][0] is not None:
+            stack.pop()
+            cost -= len(data[4][0])
     return None
 
 
 def ids(node, dst_nodes, successor, successor_args):
     visited = set()
     for limit in range(1, node.get_state().shape[0] * node.get_state().shape[1]):
-        res = dls(node, dst_nodes, successor, successor_args, visited, limit, [])
+        res, goal_node, cost = dls(node, dst_nodes, successor, successor_args, visited, limit, [])
         if res is not None:
-            return res
+            return res, goal_node, cost, limit
     return None
 
 
-class Node:
-    def __init__(self, state, parent):
-        self.__state = state
-        self.__parent = parent
+def goal_node_creator(initial_state, robot_cor, butter_core, target_cors):
+    def new_state(a, b):
+        n_state = initial_state.copy()
+        n_state[target_cor[0], target_cor[1]] = n_state[target_cor[0], target_cor[1]][:-1] + 'b'
+        n_state[butter_core[0], butter_core[1]] = n_state[butter_core[0], butter_core[1]][:-1]
+        n_state[target_cor[0] + a, target_cor[1] + b] += 'r'
+        n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
+        return n_state
 
-    def get_state(self):
-        return self.__state
+    goal_nodes = []
 
-    def get_parent(self):
-        return self.__parent
+    for target_cor in target_cors:
 
-    def __eq__(self, other):
-        if isinstance(other, Node):
-            return np.array_equal(self.__state, other.get_state())
-        else:
-            return False
+        if not ('x' in initial_state[target_cor[0] - 1, target_cor[1]]) and \
+                not ('b' in initial_state[target_cor[0] - 1, target_cor[1]]):
+            goal_nodes.append(Node(new_state(-1, 0), None))
+
+        if not ('x' in initial_state[target_cor[0] + 1, target_cor[1]]) and \
+                not ('b' in initial_state[target_cor[0] + 1, target_cor[1]]):
+            goal_nodes.append(Node(new_state(1, 0), None))
+
+        if not ('x' in initial_state[target_cor[0], target_cor[1] - 1]) and \
+                not ('b' in initial_state[target_cor[0], target_cor[1] - 1]):
+            goal_nodes.append(Node(new_state(0, -1), None))
+
+        if not ('x' in initial_state[target_cor[0], target_cor[1] + 1]) and \
+                not ('b' in initial_state[target_cor[0], target_cor[1] + 1]):
+            goal_nodes.append(Node(new_state(0, 1), None))
+
+    return goal_nodes
 
 
 def input_parser():
@@ -192,20 +228,57 @@ def input_parser():
     return np.array(data, dtype='str')
 
 
+def permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, step=0, result=None):
+    if result is None:
+        result = []
+    if step == len(butter_cors):
+        current_state = init_state
+        total_path = []
+        total_cost = 0
+        counter = 0
+        total_depth = 0
+        for butter_cor in butter_cors:
+            path, goal_node, cost, depth = ids(Node(current_state, None),
+                                               goal_node_creator(current_state, robot_cor, butter_cor, target_cors),
+                                               butter_destination_successor, (current_state, robot_cor, butter_cor))
+            if path is not None:
+                current_state = goal_node.get_state()
+                total_path.extend(path)
+                total_cost += cost
+                counter += 1
+                if depth > total_depth:
+                    total_depth = depth
+
+        result.append([total_path, total_cost, counter, total_depth])
+    for i in range(step, len(butter_cors)):
+        butter_cors_copy = butter_cors.copy()
+        butter_cors_copy[i], butter_cors_copy[step] = butter_cors_copy[step], butter_cors_copy[i]
+        permutation_of_butters(butter_cors_copy, init_state, robot_cor, target_cors, step + 1, result)
+
+
 def main():
     init_state = input_parser()
     robot_cor = ()
-    butter_cor = ()
-    print(init_state)
-    print("\n-------")
+    butter_cors = []
+    target_cors = []
+
     for i in range(init_state.shape[0]):
         for j in range(init_state.shape[1]):
             if 'r' in init_state[i, j]:
                 robot_cor = i, j
             elif 'b' in init_state[i, j]:
                 butter_cor = i, j
+                butter_cors.append(butter_cor)
+            elif 'p' in init_state[i, j]:
+                target_cor = i, j
+                target_cors.append(target_cor)
 
-    print(ids())
+    final_result = []
+    permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, result=final_result)
+
+    # TODO fetch optimize result
+
+
 
 
 if __name__ == '__main__':
