@@ -1,4 +1,5 @@
 import numpy as np
+from ordered_set import OrderedSet
 
 
 class Node:
@@ -168,16 +169,7 @@ def dls(node, dst_nodes, successor, successor_args, visited, limit, stack, cost=
         cur_node = Node(data[0][0], node)
         cur_successor_args = data[0][0], data[2], data[1]
         if not (repr(cur_node.get_state())[6:-15] in visited):
-            # if successor.__name__ == robot_butter_successor.__name__:
-            #     print('---------------------------------------------')
-            #     print()
-            #     print(cur_node.get_state())
-            #     print(stack)
-            #     print('---------------------------------------------')
-            # print(visited)
             res, goal_node, new_cost, _ = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1, stack, cost)
-            # if successor.__name__ == robot_butter_successor.__name__:
-                # print(res)
             if res is not None:
                 return res, goal_node, new_cost, successor_args
         del cur_node
@@ -192,9 +184,7 @@ def dls(node, dst_nodes, successor, successor_args, visited, limit, stack, cost=
 
 def ids(node, dst_nodes, successor, successor_args):
     for limit in range(1, node.get_state().shape[0] * node.get_state().shape[1]):
-        # if successor.__name__ == robot_butter_successor.__name__:
-        #     print('*****', limit, '*****')
-        res, goal_node, cost, final_successor_args = dls(node, dst_nodes, successor, successor_args, set(), limit, [])
+        res, goal_node, cost, final_successor_args = dls(node, dst_nodes, successor, successor_args, OrderedSet(), limit, [])
         if res is not None:
             return res, goal_node, cost, limit, final_successor_args
     return None, None, None, None, None
