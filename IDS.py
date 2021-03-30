@@ -120,7 +120,8 @@ def robot_butter_successor(state, robot_cor, butter_cor=None):
         n_state = state.copy()
         n_state[robot_cor[0] + a, robot_cor[1] + b] += 'r'
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
-        return (n_state,), (None, None), (robot_cor[0] + a, robot_cor[1] + b), (None,)
+        return (n_state,), (None, None), (robot_cor[0] + a, robot_cor[1] + b), \
+               (evaluate_direction(a, b),), (None,)
 
     if up is not None:
         states.append(new_state(-1, 0))
@@ -151,10 +152,9 @@ def dls(node, dst_nodes, successor, successor_args, visited, limit, stack, cost=
     visited.add(repr(node.get_state())[6:-15])
 
     if limit <= 0:
-        return None
+        return None, None, None
 
-    for data in successor(successor_args):
-
+    for data in successor(*successor_args):
         if data[4][0] is not None:
             stack.append(data[4][0])
             cost += len(data[4][0])
@@ -163,26 +163,34 @@ def dls(node, dst_nodes, successor, successor_args, visited, limit, stack, cost=
         cur_node = Node(data[0][0], node)
         cur_successor_args = data[0][0], data[2], data[1]
         if not (repr(cur_node.get_state())[6:-15] in visited):
-            res, goal_node, cost = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1, stack,
-                                       cost)
+            print('---------------------------------------------')
+            print()
+            print(cur_node.get_state())
+            print()
+            print('---------------------------------------------')
+            res, goal_node, new_cost = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1,
+                                           stack, cost)
+
             if res is not None:
-                return res, goal_node, cost
+                return res, goal_node, new_cost
         del cur_node
         stack.pop()
         cost -= 1
         if data[4][0] is not None:
             stack.pop()
             cost -= len(data[4][0])
-    return None
+
+    return None, None, None
 
 
 def ids(node, dst_nodes, successor, successor_args):
-    visited = set()
-    for limit in range(1, node.get_state().shape[0] * node.get_state().shape[1]):
-        res, goal_node, cost = dls(node, dst_nodes, successor, successor_args, visited, limit, [])
+    for limit in range(24, node.get_state().shape[0] * node.get_state().shape[1]):
+        if successor.__name__ == butter_destination_successor.__name__:
+            print('-------------------------------', limit, '-------------------------------')
+        res, goal_node, cost = dls(node, dst_nodes, successor, successor_args, set(), limit, [])
         if res is not None:
             return res, goal_node, cost, limit
-    return None
+    return None, None, None, None
 
 
 def goal_node_creator(initial_state, robot_cor, butter_core, target_cors):
@@ -198,20 +206,18 @@ def goal_node_creator(initial_state, robot_cor, butter_core, target_cors):
 
     for target_cor in target_cors:
 
-        if not ('x' in initial_state[target_cor[0] - 1, target_cor[1]]) and \
-                not ('b' in initial_state[target_cor[0] - 1, target_cor[1]]):
+        up, down, left, right = evaluate_neighbour(initial_state, target_cor)
+
+        if up is not None:
             goal_nodes.append(Node(new_state(-1, 0), None))
 
-        if not ('x' in initial_state[target_cor[0] + 1, target_cor[1]]) and \
-                not ('b' in initial_state[target_cor[0] + 1, target_cor[1]]):
+        if down is not None:
             goal_nodes.append(Node(new_state(1, 0), None))
 
-        if not ('x' in initial_state[target_cor[0], target_cor[1] - 1]) and \
-                not ('b' in initial_state[target_cor[0], target_cor[1] - 1]):
+        if left is not None:
             goal_nodes.append(Node(new_state(0, -1), None))
 
-        if not ('x' in initial_state[target_cor[0], target_cor[1] + 1]) and \
-                not ('b' in initial_state[target_cor[0], target_cor[1] + 1]):
+        if right is not None:
             goal_nodes.append(Node(new_state(0, 1), None))
 
     return goal_nodes
@@ -273,12 +279,16 @@ def main():
                 target_cor = i, j
                 target_cors.append(target_cor)
 
-    final_result = []
-    permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, result=final_result)
+    # final_result = []
+    # permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, result=final_result)
+    # print(final_result)
+    current_state = init_state
+
+    print(ids(Node(current_state, None),
+                                       goal_node_creator(current_state, robot_cor, butter_cors[0], target_cors),
+                                       butter_destination_successor, (current_state, robot_cor, butter_cors[0])))
 
     # TODO fetch optimize result
-
-
 
 
 if __name__ == '__main__':
