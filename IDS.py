@@ -3,9 +3,10 @@ from ordered_set import OrderedSet
 
 
 class Node:
-    def __init__(self, state, parent):
+    def __init__(self, state, parent, direction=None):
         self.__state = state
         self.__parent = parent
+        self.__direction = direction
 
     def get_state(self):
         return self.__state
@@ -13,12 +14,17 @@ class Node:
     def get_parent(self):
         return self.__parent
 
+    def get_direction(self):
+        return self.__direction
+
     def __eq__(self, other):
         if isinstance(other, Node):
             return np.array_equal(self.__state, other.get_state())
         else:
             return False
 
+    def __hash__(self):
+        return hash(repr(self.__state)[6:-15])
 
 def evaluate_neighbour(state, cor, target=False):
     up, down, left, right = None, None, None, None
