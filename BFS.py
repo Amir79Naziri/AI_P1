@@ -1,5 +1,5 @@
 import IDS
-
+from queue import Queue
 
 def evaluate_neighbour_2(state, cor):
     up, down, left, right = None, None, None, None
@@ -78,3 +78,28 @@ def butter_destination_predecessor(state, robot_cor, butter_cor, init_flag=False
             result.append(data)
 
     return result
+
+
+def bfs(fringe, visited, successor, successor_args):
+    current_node = fringe[next(iter(fringe))]
+    del fringe[next(iter(fringe))]
+    for data in successor(*successor_args):
+        new_node = IDS.Node(data[0][0], current_node)
+        if not (repr(new_node.get_state())[6:-15] in visited):
+            fringe[new_node] = data[2], data[1]
+
+
+def bidirectional_bfs(init_node, init_butter_cor, init_robot_cor, target_cors):
+    dst_fringes_list = list()
+    for target_cor in target_cors:
+        final_nodes = IDS.goal_node_creator(init_node.get_state(), init_robot_cor, init_butter_cor, (target_cor, ))
+        dst_fringes = list(dict() for _ in range(len(final_nodes)))
+        for k in range(len(final_nodes)):
+            for i in range(final_nodes[k].get_state().shape[0]):
+                for j in range(final_nodes[k].get_state().shape[1]):
+                    if 'r' in final_nodes[k].get_state()[i, j]:
+                        dst_fringes[k][final_nodes[k]] = (i, j), target_cor
+        dst_fringes_list.extend(dst_fringes)
+    src_fringe = dict()
+
+
