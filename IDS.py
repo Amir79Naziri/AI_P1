@@ -51,7 +51,7 @@ def evaluate_neighbour(state, cor, target=False):
     return up, down, left, right
 
 
-def evaluate_direction(a, b):
+def determine_direction(a, b):
     if a == 1:
         direction = 'D'
     elif a == -1:
@@ -98,7 +98,7 @@ def butter_destination_successor(state, robot_cor, butter_cor):
         res, _, _, _ = ids(Node(state, None), [Node(dst_state, None)], robot_butter_successor, (state, robot_cor))
 
         return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1]), \
-               (evaluate_direction(a, b),), (res,)
+               (determine_direction(a, b),), (res,)
 
     if up is not None:
         data = new_state(-1, 0)
@@ -132,7 +132,7 @@ def robot_butter_successor(state, robot_cor, butter_cor=None):
         n_state[robot_cor[0] + a, robot_cor[1] + b] += 'r'
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
         return (n_state,), (None, None), (robot_cor[0] + a, robot_cor[1] + b), \
-               (evaluate_direction(a, b),), (None,)
+               (determine_direction(a, b),), (None,)
 
     if up is not None:
         states.append(new_state(-1, 0))

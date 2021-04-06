@@ -2,7 +2,7 @@ import IDS
 from ordered_set import OrderedSet
 
 
-def evaluate_neighbour_2(state, cor):
+def evaluate_double_neighbour(state, cor):
     up, down, left, right = None, None, None, None
     if cor[0] - 2 >= 0:
         up = state[cor[0] - 1, cor[1]]
@@ -31,7 +31,7 @@ def evaluate_neighbour_2(state, cor):
     return up, down, left, right
 
 
-def evaluate_direction_2(a, b):
+def determine_reverse_direction(a, b):
     if a == 1:
         direction = 'U'
     elif a == -1:
@@ -45,7 +45,7 @@ def evaluate_direction_2(a, b):
     return direction
 
 
-def butter_destination_successor_2(state, robot_cor, butter_cor):
+def butter_destination_successor(state, robot_cor, butter_cor):
     result = []
     up, down, left, right = IDS.evaluate_neighbour(state, butter_cor)
 
@@ -79,7 +79,7 @@ def butter_destination_successor_2(state, robot_cor, butter_cor):
                                       (butter_cor[0] + a, butter_cor[1] + b), IDS.Node(dst_state, None))
 
         return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1]), \
-               (IDS.evaluate_direction(a, b),), (res,)
+               (IDS.determine_direction(a, b),), (res,)
 
     if up is not None:
         data = new_state(-1, 0)
@@ -104,7 +104,7 @@ def butter_destination_successor_2(state, robot_cor, butter_cor):
     return result
 
 
-def robot_butter_predecessor(state, robot_cor, butter_cor=None):
+def robot_movement_predecessor(state, robot_cor, butter_cor=None):
     states = []
     up, down, left, right = IDS.evaluate_neighbour(state, robot_cor)
 
@@ -113,7 +113,7 @@ def robot_butter_predecessor(state, robot_cor, butter_cor=None):
         n_state[robot_cor[0] + a, robot_cor[1] + b] += 'r'
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
         return (n_state,), (None, None), (robot_cor[0] + a, robot_cor[1] + b), \
-               (evaluate_direction_2(a, b),), (None,)
+               (determine_reverse_direction(a, b),), (None,)
 
     if up is not None:
         states.append(new_state(-1, 0))
@@ -132,7 +132,7 @@ def robot_butter_predecessor(state, robot_cor, butter_cor=None):
 
 def butter_destination_predecessor(state, robot_cor, butter_cor, init_flag=False):
     result = []
-    up, down, left, right = evaluate_neighbour_2(state, butter_cor)
+    up, down, left, right = evaluate_double_neighbour(state, butter_cor)
 
     def new_state(a, b):
         n_state = state.copy()
@@ -145,6 +145,7 @@ def butter_destination_predecessor(state, robot_cor, butter_cor, init_flag=False
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
         n_state[butter_cor[0] + 2 * a, butter_cor[1] + 2 * b] += 'r'
 
+        # TODO check usage of init_flag
         if not init_flag:
             dst_state = state.copy()
             dst_state[robot_cor[0], robot_cor[1]] = dst_state[robot_cor[0], robot_cor[1]][:-1]
@@ -154,8 +155,8 @@ def butter_destination_predecessor(state, robot_cor, butter_cor, init_flag=False
         else:
             res = list()
 
-        return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1]), \
-               (evaluate_direction_2(a, b),), (res,)
+        return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0] + 2 * a, butter_cor[1] + 2 * b), \
+               (determine_reverse_direction(a, b),), (res,)
 
     if up is not None:
         data = new_state(-1, 0)
@@ -198,15 +199,20 @@ def bfs(fringe, visited, successor, successor_args):
 
 def extract_path(src_node, dst_node):
     path = list()
-    while src_node.get_direction is not None:
-        path.append(src_node.get_direction)
-        src_node = src_node.get_parent
+    print('*******************')
+    print(src_node.get_state())
+    print('--------------------')
+    print(dst_node.get_state())
+    print('*******************')
+    while src_node.get_direction() is not None:
+        path.append(src_node.get_direction())
+        src_node = src_node.get_parent()
 
     path.reverse()
 
-    while dst_node.get_direction is not None:
-        path.append(dst_node.get_direction)
-        dst_node = dst_node.get_parent
+    while dst_node.get_direction() is not None:
+        path.append(dst_node.get_direction())
+        dst_node = dst_node.get_parent()
 
     return path
 
@@ -216,11 +222,11 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
     dst_visited_lists = list()
     final_nodes_lists = list()
     for target_cor in target_cors:
-        final_nodes = goal_node_creator_2(init_node.get_state(), init_robot_cor, init_butter_cor,
-                                          (target_cor,))
+        final_nodes = IDS.goal_node_creator(init_node.get_state(), init_robot_cor, init_butter_cor,
+                                            (target_cor,))
         final_nodes_lists.append(final_nodes)
         dst_fringes = list(dict() for _ in range(len(final_nodes)))
-        dst_visited_lists.extend(list(OrderedSet() for _ in range(len(final_nodes))))
+        dst_visited_lists.append(list(OrderedSet() for _ in range(len(final_nodes))))
         for k in range(len(final_nodes)):
             for i in range(final_nodes[k].get_state().shape[0]):
                 for j in range(final_nodes[k].get_state().shape[1]):
@@ -231,17 +237,18 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
     src_visited_list = OrderedSet()
     init = True
     while len(src_fringe_list) != 0 and sum(map(len, dst_fringe_lists)) != 0:
+        print('???')
         src_node = next(iter(src_fringe_list))
-        bfs(src_fringe_list, src_visited_list, butter_destination_successor_2,
+        bfs(src_fringe_list, src_visited_list, butter_destination_successor,
             (src_node.get_state(), src_fringe_list[src_node][0], src_fringe_list[src_node][1]))
 
         for i in range(len(dst_fringe_lists)):
             for j in range(len(dst_fringe_lists[i])):
                 dst_node = next(iter(dst_fringe_lists[i][j]))
-                bfs(dst_fringe_lists[i][j], dst_visited_lists[j], butter_destination_predecessor,
+                bfs(dst_fringe_lists[i][j], dst_visited_lists[i][j], butter_destination_predecessor,
                     (dst_node.get_state(), dst_fringe_lists[i][j][dst_node][0], dst_fringe_lists[i][j][dst_node][1],
                      init))
-                if src_visited_list[-1] == dst_visited_lists[j][-1]:
+                if src_visited_list[-1] == dst_visited_lists[i][j][-1]:
                     path = extract_path(src_node, dst_node)
                     return target_cors[i], final_nodes_lists[i][j], path, len(path)
 
@@ -258,11 +265,12 @@ def bidirectional_bfs_robot(init_node, init_butter_cor, init_robot_cor, final_ro
 
     while len(src_fringe_list) != 0 and len(dst_fringe_list) != 0:
         src_node = next(iter(src_fringe_list))
+
         bfs(src_fringe_list, src_visited_list, IDS.robot_butter_successor,
             (src_node.get_state(), src_fringe_list[src_node][0], src_fringe_list[src_node][1]))
 
         dst_node = next(iter(dst_fringe_list))
-        bfs(dst_fringe_list, dst_visited_list, robot_butter_predecessor,
+        bfs(dst_fringe_list, dst_visited_list, robot_movement_predecessor,
             (dst_node.get_state(), dst_fringe_list[dst_node][0], dst_fringe_list[dst_node][1]))
 
         if src_visited_list[-1] == dst_visited_list[-1]:
@@ -272,43 +280,8 @@ def bidirectional_bfs_robot(init_node, init_butter_cor, init_robot_cor, final_ro
     return None
 
 
-def goal_node_creator_2(initial_state, robot_cor, butter_cor, target_cors, forButter=True):
-    def new_state(a, b):
-        n_state = initial_state.copy()
-        if forButter:
-            n_state[target_cor[0], target_cor[1]] = n_state[target_cor[0], target_cor[1]][:-1] + 'b'
-            n_state[butter_cor[0], butter_cor[1]] = n_state[butter_cor[0], butter_cor[1]][:-1]
-            n_state[target_cor[0] + a, target_cor[1] + b] += 'r'
-            n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
-        else:
-            n_state[target_cor[0], target_cor[1]] = n_state[target_cor[0], target_cor[1]][:-1] + 'r'
-            n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
-        return n_state
+def permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, result, step=0):
 
-    goal_nodes = []
-
-    for target_cor in target_cors:
-
-        up, down, left, right = IDS.evaluate_neighbour(initial_state, target_cor, target=True)
-
-        if up is not None:
-            goal_nodes.append(IDS.Node(new_state(-1, 0), None))
-
-        if down is not None:
-            goal_nodes.append(IDS.Node(new_state(1, 0), None))
-
-        if left is not None:
-            goal_nodes.append(IDS.Node(new_state(0, -1), None))
-
-        if right is not None:
-            goal_nodes.append(IDS.Node(new_state(0, 1), None))
-
-    return goal_nodes
-
-
-def permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, step=0, result=None):
-    if result is None:
-        result = []
     if step == len(butter_cors):
         current_state = init_state
         total_path = []
@@ -317,9 +290,10 @@ def permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, step
         total_depth = 0
 
         for butter_cor in butter_cors:
-            chosen_target, goal_node, path, cost = bidirectional_bfs_butter(IDS.Node(current_state, None, None),
+            chosen_target, goal_node, path, cost = bidirectional_bfs_butter(IDS.Node(current_state, None),
                                                                             butter_cor,
                                                                             robot_cor, target_cors)
+            print(path)
             if path is not None:
                 current_state = goal_node.get_state()
                 target_cors.remove(chosen_target)
@@ -337,7 +311,7 @@ def permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, step
     for i in range(step, len(butter_cors)):
         butter_cors_copy = butter_cors.copy()
         butter_cors_copy[i], butter_cors_copy[step] = butter_cors_copy[step], butter_cors_copy[i]
-        permutation_of_butters(butter_cors_copy, init_state, robot_cor, target_cors, step + 1, result)
+        permutation_of_butters(butter_cors_copy, init_state, robot_cor, target_cors, result, step + 1)
 
 
 def main():
@@ -359,8 +333,10 @@ def main():
                 target_cors.append(target_cor)
 
     final_result = []
-    permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, result=final_result)
-    IDS.extract_result(final_result, len(butter_cors))
+    permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, final_result)
+    print(final_result)
+
+    # IDS.extract_result(final_result, len(butter_cors))
 
 
 if __name__ == '__main__':
