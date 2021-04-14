@@ -51,7 +51,7 @@ def a_asterisk(init_node, init_butter_cor, init_robot_cor, dst_nodes, successor,
         current_state = current_node.get_state()
         if goal(current_node, dst_nodes):
             return extract_path(current_node), current_node.get_cost(), current_state
-
+        visited.add(repr(current_node.get_state())[6:-15])
         for data in successor(current_state, current_robot_cor, current_butter_cor):
             path = list()
             cost = current_node.get_cost()
@@ -338,7 +338,11 @@ def extract_result(final_result, num_of_butters):
         for part in best_result[0]:
             li.extend(part)
 
-        print(*li)
+        li2 = []
+        for part in li:
+            li2.extend(part)
+
+        print(*li2)
         print(best_result[1])
         print(best_result[3])
     else:
@@ -348,7 +352,12 @@ def extract_result(final_result, num_of_butters):
         li = []
         for part in best_result[0]:
             li.extend(part)
-        print(*li)
+
+        li2 = []
+        for part in li:
+            li2.extend(part)
+
+        print(*li2)
         print(best_result[1])
         print(best_result[3])
 
