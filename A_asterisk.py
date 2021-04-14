@@ -1,12 +1,68 @@
 import numpy as np
+import math
 from ordered_set import OrderedSet
 
 
+def manhattan_distance(src_cor, dst_cor):
+    return math.fabs(src_cor[0] - dst_cor[0]) + math.fabs(src_cor[1] - dst_cor[1])
+
+
+def butter_heuristic(butter_cor, dst_cors):
+    li = []
+
+    for dst_cor in dst_cors:
+        li.append(manhattan_distance(butter_cor, dst_cor))
+
+    return min(li)
+
+
+def A_asterisk(init_node, init_butter_cor, init_robot_cor, dst_nodes, successor):
+    visited = OrderedSet()
+    fringe_list = dict()
+
+    fringe_list[init_node] = (init_robot_cor, init_butter_cor)
+
+    while len(fringe_list) > 0:
+        minimum = np.inf
+        minimum_key = None
+        for key in fringe_list.keys():
+            if minimum > key.get_cost():
+                minimum = key.get_cost()
+                minimum_key = key
+
+        current_node = minimum_key
+        current_robot_cor, current_butter_cor = fringe_list[minimum_key]
+        del fringe_list[minimum_key]
+
+        current_state = current_node.get_state()
+
+        if goal(current_node, dst_nodes):
+            return  # TODO : return final path
+
+        for data in successor(current_state, current_robot_cor, current_butter_cor):
+            path = ''
+            if data[4][0] is not None:
+                path += data[4][0]
+
+            new_cost = evaluate_cost(data[0][0], data[1]) + current_node.get_cost()
+            path += data[3][0]
+            new_node = Node(data[0][0], current_node, new_cost, path)
+            if not (repr(new_node.get_state())[6:-15] in visited):
+                for node in fringe_list:
+                    if node == new_node:
+                        if node.get_cost() > new_node.get_cost():
+                            del fringe_list[node]
+                            fringe_list[new_node] = (data[1], data[2])
+                else:
+                    fringe_list[new_node] = (data[1], data[2])
+
+
 class Node:
-    def __init__(self, state, parent, direction=None):
+    def __init__(self, state, parent, cost=0, direction=None):
         self.__state = state
         self.__parent = parent
         self.__direction = direction
+        self.__cost = cost
 
     def get_state(self):
         return self.__state
@@ -17,6 +73,9 @@ class Node:
     def get_direction(self):
         return self.__direction
 
+    def get_cost(self):
+        return self.__cost
+
     def __eq__(self, other):
         if isinstance(other, Node):
             return np.array_equal(self.__state, other.get_state())
@@ -25,6 +84,20 @@ class Node:
 
     def __hash__(self):
         return hash(repr(self.__state)[6:-15])
+
+
+def determine_direction(a, b):
+    if a == 1:
+        direction = 'D'
+    elif a == -1:
+        direction = 'U'
+    else:
+        if b == 1:
+            direction = 'R'
+        else:
+            direction = 'L'
+
+    return direction
 
 
 def evaluate_neighbour(state, cor, target=False):
@@ -52,18 +125,12 @@ def evaluate_neighbour(state, cor, target=False):
     return up, down, left, right
 
 
-def determine_direction(a, b):
-    if a == 1:
-        direction = 'D'
-    elif a == -1:
-        direction = 'U'
-    else:
-        if b == 1:
-            direction = 'R'
-        else:
-            direction = 'L'
+def evaluate_cost(state, cor):
+    data = state[cor[0], cor[1]]
 
-    return direction
+    for i in range(len(data), 0, -1):
+        if data[0:i].isdigit():
+            return int(data[0:i])
 
 
 def butter_destination_successor(state, robot_cor, butter_cor):
@@ -95,8 +162,9 @@ def butter_destination_successor(state, robot_cor, butter_cor):
         dst_state = state.copy()
         dst_state[robot_cor[0], robot_cor[1]] = dst_state[robot_cor[0], robot_cor[1]][:-1]
         dst_state[butter_cor[0] - a, butter_cor[1] - b] += 'r'
-
-        res, _, _, _ = ids(Node(state, None), [Node(dst_state, None)], robot_butter_successor, (state, robot_cor))
+        res = None
+        # TODO : configure return
+        A_asterisk(Node(state, None), butter_cor, robot_cor, [Node(dst_state, None)], robot_butter_successor)
 
         return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1]), \
                (determine_direction(a, b),), (res,)
@@ -157,48 +225,6 @@ def goal(src_node, dst_nodes):
     return False
 
 
-def dls(node, dst_nodes, successor, successor_args, visited, limit, stack, cost=0):
-    if goal(node, dst_nodes):
-        return stack, node, cost
-
-    visited.add(repr(node.get_state())[6:-15])
-
-    if limit <= 0:
-        visited.pop()
-        return None, None, None
-
-    for data in successor(*successor_args):
-        if data[4][0] is not None:
-            stack.append(data[4][0])
-            cost += len(data[4][0])
-        stack.append(data[3][0])
-        cost += 1
-        cur_node = Node(data[0][0], node)
-        cur_successor_args = data[0][0], data[2], data[1]
-        if not (repr(cur_node.get_state())[6:-15] in visited):
-            res, goal_node, new_cost = dls(cur_node, dst_nodes, successor, cur_successor_args, visited, limit - 1,
-                                           stack, cost)
-            if res is not None:
-                return res, goal_node, new_cost
-        del cur_node
-        stack.pop()
-        cost -= 1
-        if data[4][0] is not None:
-            stack.pop()
-            cost -= len(data[4][0])
-    visited.pop()
-    return None, None, None
-
-
-def ids(node, dst_nodes, successor, successor_args):
-    for limit in range(1, node.get_state().shape[0] * node.get_state().shape[1]):
-        res, goal_node, cost = dls(node, dst_nodes, successor, successor_args, OrderedSet(),
-                                   limit, [])
-        if res is not None:
-            return res, goal_node, cost, sum(map(len, res))
-    return None, None, None, None
-
-
 def goal_node_creator(initial_state, robot_cor, butter_cor, target_cors):
     def new_state(a, b):
         n_state = initial_state.copy()
@@ -250,11 +276,12 @@ def permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, step
         counter = 0
         total_depth = 0
         for butter_cor in butter_cors:
-            path, goal_node, cost, depth = ids(Node(current_state, None),
-                                               goal_node_creator(current_state, robot_cor,
-                                                                 butter_cor, target_cors),
-                                               butter_destination_successor,
-                                               (current_state, robot_cor, butter_cor))
+            #TODO : configure result
+            A_asterisk(Node(current_state, None), butter_cor, robot_cor,
+                       goal_node_creator(current_state, robot_cor, butter_cor, target_cors),
+                       butter_destination_successor)
+
+            path, goal_node, cost, depth = None, None, None, None
             if path is not None:
                 current_state = goal_node.get_state()
                 for i in range(current_state.shape[0]):
@@ -331,3 +358,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
