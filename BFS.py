@@ -7,25 +7,25 @@ def evaluate_double_neighbour(state, cor):
     if cor[0] - 2 >= 0:
         up = state[cor[0] - 1, cor[1]]
         double_up = state[cor[0] - 2, cor[1]]
-        if (('x' in up) or ('b' in up) or ('p' in up)) or (('x' in double_up) or ('b' in double_up)):
+        if (('x' in up) or ('b' in up) or ('p' in up)) and (('x' in double_up) or ('b' in double_up)):
             up = None
 
     if cor[0] + 2 < state.shape[0]:
         down = state[cor[0] + 1, cor[1]]
         double_down = state[cor[0] + 2, cor[1]]
-        if (('x' in down) or ('b' in down) or ('p' in down)) or (('x' in double_down) or ('b' in double_down)):
+        if (('x' in down) or ('b' in down) or ('p' in down)) and (('x' in double_down) or ('b' in double_down)):
             down = None
 
     if cor[1] - 2 >= 0:
         left = state[cor[0], cor[1] - 1]
         double_left = state[cor[0], cor[1] - 2]
-        if (('x' in left) or ('b' in left) or ('p' in left)) or (('x' in double_left) or ('b' in double_left)):
+        if (('x' in left) or ('b' in left) or ('p' in left)) and (('x' in double_left) or ('b' in double_left)):
             left = None
 
     if cor[1] + 2 < state.shape[1]:
         right = state[cor[0], cor[1] + 1]
         double_right = state[cor[0], cor[1] + 2]
-        if (('x' in right) or ('b' in right) or ('p' in right)) or (('x' in double_right) or ('b' in double_right)):
+        if (('x' in right) or ('b' in right) or ('p' in right)) and (('x' in double_right) or ('b' in double_right)):
             right = None
 
     return up, down, left, right
@@ -43,6 +43,7 @@ def determine_reverse_direction(a, b):
             direction = 'R'
 
     return direction
+
 
 
 def butter_destination_successor(state, robot_cor, butter_cor):
@@ -241,9 +242,9 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
     for target_cor in target_cors:
         final_nodes = IDS.goal_node_creator(init_node.get_state(), init_robot_cor, init_butter_cor,
                                             (target_cor,))
-        for node in final_nodes:
-            print(node.get_state())
-            print('***')
+        # for node in final_nodes:
+        #     print(node.get_state())
+        #     print('***')
 
         final_nodes_lists.append(final_nodes)
         dst_fringes = list(dict() for _ in range(len(final_nodes)))
@@ -265,11 +266,11 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
 
         for i in range(len(dst_fringe_lists)):
             for j in range(len(dst_fringe_lists[i])):
-                if len(dst_fringe_lists[i][j]) == 0:
-                    print(i)
+                # if len(dst_fringe_lists[i][j]) == 0:
+                #     print(i)
                 dst_node = next(iter(dst_fringe_lists[i][j]))
-                if i == 0:
-                    print(dst_fringe_lists[i])
+                # if i == 0:
+                #     print(dst_fringe_lists[i])
                 # print("******")
                 bfs(dst_fringe_lists[i][j], dst_visited_lists[i][j], butter_destination_predecessor,
                     (dst_node.get_state(), dst_fringe_lists[i][j][dst_node][0], dst_fringe_lists[i][j][dst_node][1],
@@ -303,14 +304,20 @@ def bidirectional_bfs_robot(init_node, init_butter_cor, init_robot_cor, final_ro
             for dst in dst_fringe_list:
                 if np.array_equal(src.get_state(), dst.get_state()):
                     path = extract_path(src, dst)
+                    print('*************** Path ****************')
+                    print(path)
                     return path
 
         src_node = next(iter(src_fringe_list))
+        print('Source: ')
+        print(src_node.get_state())
         bfs(src_fringe_list, src_visited_list, IDS.robot_butter_successor,
             (src_node.get_state(), src_fringe_list[src_node][0], src_fringe_list[src_node][1]))
 
 
         dst_node = next(iter(dst_fringe_list))
+        print('Destination: ')
+        print(dst_node.get_state())
         # print('Destination:')
         # print(dst_node.get_state())
         bfs(dst_fringe_list, dst_visited_list, robot_movement_predecessor,

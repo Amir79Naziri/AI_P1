@@ -7,7 +7,7 @@ def manhattan_distance(src_cor, dst_cor):
     return math.fabs(src_cor[0] - dst_cor[0]) + math.fabs(src_cor[1] - dst_cor[1])
 
 
-def butter_heuristic(butter_cor, dst_cors):
+def heuristic(butter_cor, dst_cors):
     li = []
 
     for dst_cor in dst_cors:
@@ -16,7 +16,16 @@ def butter_heuristic(butter_cor, dst_cors):
     return min(li)
 
 
-def A_asterisk(init_node, init_butter_cor, init_robot_cor, dst_nodes, successor):
+def extract_path(final_node):
+    path = list()
+    while final_node.get_direction() is not None:
+        path.append(final_node.get_direction())
+        final_node = final_node.get_parent()
+    path.reverse()
+    return path
+
+
+def a_asterisk(init_node, init_butter_cor, init_robot_cor, dst_nodes, successor, dst_cors):
     visited = OrderedSet()
     fringe_list = dict()
 
@@ -26,35 +35,50 @@ def A_asterisk(init_node, init_butter_cor, init_robot_cor, dst_nodes, successor)
         minimum = np.inf
         minimum_key = None
         for key in fringe_list.keys():
-            if minimum > key.get_cost():
-                minimum = key.get_cost()
-                minimum_key = key
+            if successor.__name__ == butter_destination_successor.__name__:
+                if minimum > key.get_cost() + heuristic(fringe_list[key][1], dst_cors):
+                    minimum = key.get_cost() + heuristic(fringe_list[key][1], dst_cors)
+                    minimum_key = key
+            else:
+                if minimum > key.get_cost() + heuristic(fringe_list[key][0], dst_cors):
+                    minimum = key.get_cost() + heuristic(fringe_list[key][0], dst_cors)
+                    minimum_key = key
 
         current_node = minimum_key
         current_robot_cor, current_butter_cor = fringe_list[minimum_key]
         del fringe_list[minimum_key]
 
         current_state = current_node.get_state()
-
         if goal(current_node, dst_nodes):
-            return  # TODO : return final path
+            return extract_path(current_node), current_node.get_cost(), current_state
 
         for data in successor(current_state, current_robot_cor, current_butter_cor):
-            path = ''
+            path = list()
+            cost = current_node.get_cost()
             if data[4][0] is not None:
                 path += data[4][0]
+                cost += data[4][1]
 
-            new_cost = evaluate_cost(data[0][0], data[1]) + current_node.get_cost()
+            new_cost = evaluate_cost(data[0][0], data[2]) + cost
             path += data[3][0]
             new_node = Node(data[0][0], current_node, new_cost, path)
             if not (repr(new_node.get_state())[6:-15] in visited):
                 for node in fringe_list:
-                    if node == new_node:
-                        if node.get_cost() > new_node.get_cost():
-                            del fringe_list[node]
-                            fringe_list[new_node] = (data[1], data[2])
-                else:
-                    fringe_list[new_node] = (data[1], data[2])
+                    if np.array_equal(node.get_state(), new_node.get_state()):
+                        if successor.__name__ == butter_destination_successor.__name__:
+                            if node.get_cost() + heuristic(fringe_list[node][1],
+                                                           dst_cors) > new_node.get_cost() + heuristic(data[1],
+                                                                                                       dst_cors):
+                                del fringe_list[node]
+                                break
+                        else:
+                            if node.get_cost() + heuristic(fringe_list[node][0],
+                                                           dst_cors) > new_node.get_cost() + heuristic(data[2],
+                                                                                                       dst_cors):
+                                del fringe_list[node]
+                                break
+                fringe_list[new_node] = (data[2], data[1])
+    return None, None, None
 
 
 class Node:
@@ -162,12 +186,10 @@ def butter_destination_successor(state, robot_cor, butter_cor):
         dst_state = state.copy()
         dst_state[robot_cor[0], robot_cor[1]] = dst_state[robot_cor[0], robot_cor[1]][:-1]
         dst_state[butter_cor[0] - a, butter_cor[1] - b] += 'r'
-        res = None
-        # TODO : configure return
-        A_asterisk(Node(state, None), butter_cor, robot_cor, [Node(dst_state, None)], robot_butter_successor)
-
+        res, cost, final_state = a_asterisk(Node(state, None), butter_cor, robot_cor, [Node(dst_state, None)],
+                                            robot_butter_successor, [(butter_cor[0] - a, butter_cor[1] - b), ])
         return (n_state,), (butter_cor[0] + a, butter_cor[1] + b), (butter_cor[0], butter_cor[1]), \
-               (determine_direction(a, b),), (res,)
+               (determine_direction(a, b),), (res, cost)
 
     if up is not None:
         data = new_state(-1, 0)
@@ -276,14 +298,12 @@ def permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, step
         counter = 0
         total_depth = 0
         for butter_cor in butter_cors:
-            #TODO : configure result
-            A_asterisk(Node(current_state, None), butter_cor, robot_cor,
-                       goal_node_creator(current_state, robot_cor, butter_cor, target_cors),
-                       butter_destination_successor)
+            path, cost, new_state = a_asterisk(Node(current_state, None), butter_cor, robot_cor,
+                                               goal_node_creator(current_state, robot_cor, butter_cor, target_cors),
+                                               butter_destination_successor, target_cors)
 
-            path, goal_node, cost, depth = None, None, None, None
             if path is not None:
-                current_state = goal_node.get_state()
+                current_state = new_state
                 for i in range(current_state.shape[0]):
                     for j in range(current_state.shape[1]):
                         if 'r' in current_state[i, j]:
@@ -291,7 +311,7 @@ def permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, step
                 total_path.extend(path)
                 total_cost += cost
                 counter += 1
-                total_depth = total_cost
+                total_depth += sum(map(len, path))
 
         result.append([total_path, total_cost, counter, total_depth])
     for i in range(step, len(butter_cors)):
@@ -358,5 +378,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
