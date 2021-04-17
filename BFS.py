@@ -261,25 +261,35 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
     src_fringe_list = {init_node: (init_robot_cor, init_butter_cor)}
     src_visited_list = OrderedSet()
     init = True
+
     while len(src_fringe_list) != 0 and sum(map(len, dst_fringe_lists)) != 0:
-        src_node = next(iter(src_fringe_list))
-        # print(src_visited_list)
-        # for src_visited in src_visited_list:
-        #     for i in src_visited.split('\n'):
-        #         print(i.strip())
-        #     print('+++++')
-        # print('-------------')
-        bfs(src_fringe_list, src_visited_list, butter_destination_successor,
-            (src_node.get_state(), src_fringe_list[src_node][0], src_fringe_list[src_node][1]))
+
+
+        current_src_fringe_list_size = len(src_fringe_list)
+        for _ in range(current_src_fringe_list_size):
+            src_node = next(iter(src_fringe_list))
+            bfs(src_fringe_list, src_visited_list, butter_destination_successor,
+                (src_node.get_state(), src_fringe_list[src_node][0], src_fringe_list[src_node][1]))
+
+        for src in src_fringe_list:
+            for i in range(len(dst_fringe_lists)):
+                for j in range(len(dst_fringe_lists[i])):
+                    for dst in dst_fringe_lists[i][j]:
+                        if np.array_equal(src.get_state(), dst.get_state()):
+                            path = extract_path(src, dst, True)
+                            return target_cors[i], final_nodes_lists[i][j], path, len(path)
 
 
         for i in range(len(dst_fringe_lists)):
             for j in range(len(dst_fringe_lists[i])):
 
-                dst_node = next(iter(dst_fringe_lists[i][j]))
-                bfs(dst_fringe_lists[i][j], dst_visited_lists[i][j], butter_destination_predecessor,
-                    (dst_node.get_state(), dst_fringe_lists[i][j][dst_node][0], dst_fringe_lists[i][j][dst_node][1],
-                     init))
+                current_dst_fringe_list_size = len(dst_fringe_lists[i][j])
+                for _ in range(current_dst_fringe_list_size):
+                    dst_node = next(iter(dst_fringe_lists[i][j]))
+                    bfs(dst_fringe_lists[i][j], dst_visited_lists[i][j], butter_destination_predecessor,
+                        (dst_node.get_state(), dst_fringe_lists[i][j][dst_node][0], dst_fringe_lists[i][j][dst_node][1],
+                         init))
+
 
                 for src in src_fringe_list:
                     for dst in dst_fringe_lists[i][j]:
@@ -306,13 +316,24 @@ def bidirectional_bfs_robot(init_node, init_butter_cor, init_robot_cor, final_ro
                     path = extract_path(src, dst)
                     return path
 
-        src_node = next(iter(src_fringe_list))
-        bfs(src_fringe_list, src_visited_list, IDS.robot_butter_successor,
-            (src_node.get_state(), src_fringe_list[src_node][0], src_fringe_list[src_node][1]))
+        current_src_fringe_list_size = len(src_fringe_list)
+        for _ in range(current_src_fringe_list_size):
+            src_node = next(iter(src_fringe_list))
+            bfs(src_fringe_list, src_visited_list, IDS.robot_butter_successor,
+                (src_node.get_state(), src_fringe_list[src_node][0], src_fringe_list[src_node][1]))
 
-        dst_node = next(iter(dst_fringe_list))
-        bfs(dst_fringe_list, dst_visited_list, robot_movement_predecessor,
-            (dst_node.get_state(), dst_fringe_list[dst_node][0], dst_fringe_list[dst_node][1]))
+        for src in src_fringe_list:
+            for dst in dst_fringe_list:
+                if np.array_equal(src.get_state(), dst.get_state()):
+                    path = extract_path(src, dst)
+                    return path
+
+        current_dst_fringe_list_size = len(dst_fringe_list)
+        for _ in range(current_dst_fringe_list_size):
+            dst_node = next(iter(dst_fringe_list))
+            bfs(dst_fringe_list, dst_visited_list, robot_movement_predecessor,
+                (dst_node.get_state(), dst_fringe_list[dst_node][0], dst_fringe_list[dst_node][1]))
+
 
     return None
 
