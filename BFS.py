@@ -7,25 +7,25 @@ def evaluate_double_neighbour(state, cor):
     if cor[0] - 2 >= 0:
         up = state[cor[0] - 1, cor[1]]
         double_up = state[cor[0] - 2, cor[1]]
-        if (('x' in up) or ('b' in up) or ('p' in up)) and (('x' in double_up) or ('b' in double_up)):
+        if (('x' in up) or ('b' in up) or ('p' in up)) or (('x' in double_up) or ('b' in double_up)):
             up = None
 
     if cor[0] + 2 < state.shape[0]:
         down = state[cor[0] + 1, cor[1]]
         double_down = state[cor[0] + 2, cor[1]]
-        if (('x' in down) or ('b' in down) or ('p' in down)) and (('x' in double_down) or ('b' in double_down)):
+        if (('x' in down) or ('b' in down) or ('p' in down)) or (('x' in double_down) or ('b' in double_down)):
             down = None
 
     if cor[1] - 2 >= 0:
         left = state[cor[0], cor[1] - 1]
         double_left = state[cor[0], cor[1] - 2]
-        if (('x' in left) or ('b' in left) or ('p' in left)) and (('x' in double_left) or ('b' in double_left)):
+        if (('x' in left) or ('b' in left) or ('p' in left)) or (('x' in double_left) or ('b' in double_left)):
             left = None
 
     if cor[1] + 2 < state.shape[1]:
         right = state[cor[0], cor[1] + 1]
         double_right = state[cor[0], cor[1] + 2]
-        if (('x' in right) or ('b' in right) or ('p' in right)) and (('x' in double_right) or ('b' in double_right)):
+        if (('x' in right) or ('b' in right) or ('p' in right)) or (('x' in double_right) or ('b' in double_right)):
             right = None
 
     return up, down, left, right
@@ -90,18 +90,7 @@ def butter_destination_successor(state, robot_cor, butter_cor):
         dst_state = state.copy()
         dst_state[robot_cor[0], robot_cor[1]] = dst_state[robot_cor[0], robot_cor[1]][:-1]
         dst_state[butter_cor[0] - a, butter_cor[1] - b] += 'r'
-        # print('State ******')
-        # print(state)
-        # print('robot cor:')
-        # print(robot_cor)
-        # print('butter cor:')
-        # print(butter_cor)
-        # print('destination robot:')
-        # print((butter_cor[0] + a, butter_cor[1] + b))
-        # print('destination butter:')
-        # print((a, b))
-        # print('destination state:')
-        # print(dst_state)
+
         res = bidirectional_bfs_robot(IDS.Node(state, None), butter_cor, robot_cor,
                                       (butter_cor[0] - a, butter_cor[1] - b), IDS.Node(dst_state, None))
 
@@ -168,8 +157,8 @@ def butter_destination_predecessor(state, robot_cor, butter_cor, init_flag=False
 
         else:
             n_state[butter_cor[0], butter_cor[1]] = n_state[butter_cor[0], butter_cor[1]][:-1]
-        n_state[butter_cor[0] + a, butter_cor[1] + b] += 'b'
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
+        n_state[butter_cor[0] + a, butter_cor[1] + b] += 'b'
         n_state[butter_cor[0] + 2 * a, butter_cor[1] + 2 * b] += 'r'
 
         if not init_flag:
@@ -242,20 +231,12 @@ def extract_path(src_node, dst_node, flag=False):
         src_node = src_node.get_parent()
 
     path.reverse()
-    # if flag:
-    #     print('First half Path:')
-    #     print(path)
-    #     print("+")
+
     while dst_node.get_direction() is not None:
-        # if flag:
-        #     print(dst_node.get_direction())
+
         path.append(dst_node.get_direction())
         dst_node = dst_node.get_parent()
-    # if flag:
-    #     print("++++++++++")
 
-    # print(path)
-    # print('************************')
     return path
 
 
@@ -282,9 +263,15 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
     init = True
     while len(src_fringe_list) != 0 and sum(map(len, dst_fringe_lists)) != 0:
         src_node = next(iter(src_fringe_list))
+        # print(src_visited_list)
+        # for src_visited in src_visited_list:
+        #     for i in src_visited.split('\n'):
+        #         print(i.strip())
+        #     print('+++++')
+        # print('-------------')
         bfs(src_fringe_list, src_visited_list, butter_destination_successor,
             (src_node.get_state(), src_fringe_list[src_node][0], src_fringe_list[src_node][1]))
-        # print(src_fringe_list)
+
 
         for i in range(len(dst_fringe_lists)):
             for j in range(len(dst_fringe_lists[i])):
@@ -294,11 +281,11 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
                     (dst_node.get_state(), dst_fringe_lists[i][j][dst_node][0], dst_fringe_lists[i][j][dst_node][1],
                      init))
 
-                # for src in src_fringe_list:
-                #     for dst in dst_fringe_lists[i][j]:
-                #         if np.array_equal(src.get_state(), dst.get_state()):
-                #             path = extract_path(src, dst, True)
-                #             return target_cors[i], final_nodes_lists[i][j], path, len(path)
+                for src in src_fringe_list:
+                    for dst in dst_fringe_lists[i][j]:
+                        if np.array_equal(src.get_state(), dst.get_state()):
+                            path = extract_path(src, dst, True)
+                            return target_cors[i], final_nodes_lists[i][j], path, len(path)
 
         init = False
     return None, None, None, None
@@ -310,11 +297,7 @@ def bidirectional_bfs_robot(init_node, init_butter_cor, init_robot_cor, final_ro
 
     src_fringe_list = {init_node: (init_robot_cor, init_butter_cor)}
     src_visited_list = OrderedSet()
-    # if flag:
-    #     print('source')
-    #     print(init_node.get_state())
-    #     print('destination')
-    #     print(target_node.get_state())
+
     while len(src_fringe_list) != 0 and len(dst_fringe_list) != 0:
 
         for src in src_fringe_list:
@@ -384,8 +367,12 @@ def extract_result(final_result, num_of_butters):
         for part in best_result[0]:
            li.extend(part)
 
+        li2 = ''
+        for part in li:
+            if part == 'L' or part == 'U' or part == 'D' or part == 'R':
+                li2 += part + ' '
 
-        print(*li)
+        print(li2)
         print(best_result[1])
         print(best_result[3])
     else:
@@ -395,9 +382,16 @@ def extract_result(final_result, num_of_butters):
         li = []
         for part in best_result[0]:
             li.extend(part)
-        print(*li)
+
+        li2 = ''
+        for part in li:
+            if part == 'L' or part == 'U' or part == 'D' or part == 'R':
+                li2 += part + ' '
+
+        print(li2)
         print(best_result[1])
         print(best_result[3])
+
 
 def main():
     init_state = IDS.input_parser()
@@ -421,17 +415,8 @@ def main():
     permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, result=final_result)
     extract_result(final_result, len(butter_cors))
 
-    # chosen_target, goal_node, path, cost = bidirectional_bfs_butter(IDS.Node(init_state, None), butter_cors[0],
-    #                                                                 robot_cor, target_cors)
-    # print('path')
-    # print(path)
-    # dst = init_state.copy()
-    # dst[robot_cor[0], robot_cor[1]] = dst[robot_cor[0], robot_cor[1]][:-1]
-    # dst[3, 1] += 'r'
-    # print(dst)
-    #
-    # print(bidirectional_bfs_robot(IDS.Node(init_state, None),
-    #                         butter_cors[0], robot_cor, (3, 1), IDS.Node(dst, None)))
+    print(final_result)
+
 
 
 if __name__ == '__main__':
