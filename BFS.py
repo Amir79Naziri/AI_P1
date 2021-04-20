@@ -231,6 +231,7 @@ def extract_path(src_node, dst_node, flag=False):
         src_node = src_node.get_parent()
 
     path.reverse()
+    print(path)
 
     while dst_node.get_direction() is not None:
 
@@ -266,6 +267,7 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
 
 
         current_src_fringe_list_size = len(src_fringe_list)
+        src_fringe_list_copy = src_fringe_list.copy()
         for _ in range(current_src_fringe_list_size):
             src_node = next(iter(src_fringe_list))
             bfs(src_fringe_list, src_visited_list, butter_destination_successor,
@@ -290,12 +292,16 @@ def bidirectional_bfs_butter(init_node, init_butter_cor, init_robot_cor, target_
                         (dst_node.get_state(), dst_fringe_lists[i][j][dst_node][0], dst_fringe_lists[i][j][dst_node][1],
                          init))
 
-
-                for src in src_fringe_list:
-                    for dst in dst_fringe_lists[i][j]:
+                for dst in dst_fringe_lists[i][j]:
+                    for src in src_fringe_list:
                         if np.array_equal(src.get_state(), dst.get_state()):
                             path = extract_path(src, dst, True)
                             return target_cors[i], final_nodes_lists[i][j], path, len(path)
+                    for src in src_fringe_list_copy:
+                        if np.array_equal(src.get_state(), dst.get_state()):
+                            path = extract_path(src, dst, True)
+                            return target_cors[i], final_nodes_lists[i][j], path, len(path)
+
 
         init = False
     return None, None, None, None
@@ -316,6 +322,7 @@ def bidirectional_bfs_robot(init_node, init_butter_cor, init_robot_cor, final_ro
                     path = extract_path(src, dst)
                     return path
 
+        src_fringe_list_copy = src_fringe_list.copy()
         current_src_fringe_list_size = len(src_fringe_list)
         for _ in range(current_src_fringe_list_size):
             src_node = next(iter(src_fringe_list))
@@ -334,7 +341,11 @@ def bidirectional_bfs_robot(init_node, init_butter_cor, init_robot_cor, final_ro
             bfs(dst_fringe_list, dst_visited_list, robot_movement_predecessor,
                 (dst_node.get_state(), dst_fringe_list[dst_node][0], dst_fringe_list[dst_node][1]))
 
-
+        for src in src_fringe_list_copy:
+            for dst in dst_fringe_list:
+                if np.array_equal(src.get_state(), dst.get_state()):
+                    path = extract_path(src, dst)
+                    return path
     return None
 
 
