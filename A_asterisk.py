@@ -252,7 +252,10 @@ def goal_node_creator(initial_state, robot_cor, butter_cor, target_cors):
         n_state = initial_state.copy()
         n_state[target_cor[0], target_cor[1]] = n_state[target_cor[0], target_cor[1]][:-1] + 'b'
         n_state[butter_cor[0], butter_cor[1]] = n_state[butter_cor[0], butter_cor[1]][:-1]
-        n_state[target_cor[0] + a, target_cor[1] + b] += 'r'
+        if 'b' not in n_state[target_cor[0] + a, target_cor[1] + b]:
+            n_state[target_cor[0] + a, target_cor[1] + b] += 'r'
+        else:
+            return None
         n_state[robot_cor[0], robot_cor[1]] = n_state[robot_cor[0], robot_cor[1]][:-1]
         return n_state
 
@@ -263,16 +266,24 @@ def goal_node_creator(initial_state, robot_cor, butter_cor, target_cors):
         up, down, left, right = evaluate_neighbour(initial_state, target_cor, target=True)
 
         if up is not None:
-            goal_nodes.append(Node(new_state(-1, 0), None))
+            new_node = Node(new_state(-1, 0), None)
+            if new_node.get_state() is not None:
+                goal_nodes.append(new_node)
 
         if down is not None:
-            goal_nodes.append(Node(new_state(1, 0), None))
+            new_node = Node(new_state(1, 0), None)
+            if new_node.get_state() is not None:
+                goal_nodes.append(new_node)
 
         if left is not None:
-            goal_nodes.append(Node(new_state(0, -1), None))
+            new_node = Node(new_state(0, -1), None)
+            if new_node.get_state() is not None:
+                goal_nodes.append(new_node)
 
         if right is not None:
-            goal_nodes.append(Node(new_state(0, 1), None))
+            new_node = Node(new_state(0, 1), None)
+            if new_node.get_state() is not None:
+                goal_nodes.append(new_node)
 
     return goal_nodes
 
