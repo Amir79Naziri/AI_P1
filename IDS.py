@@ -1,5 +1,7 @@
 import numpy as np
 from ordered_set import OrderedSet
+import view
+import time
 
 
 class Node:
@@ -305,6 +307,7 @@ def extract_result(final_result, num_of_butters):
         print(*li)
         print(best_result[1])
         print(best_result[3])
+        return li
     else:
         print('can’t pass {} butter{}'.format(num_of_butters - max_counter,
                                               's' if num_of_butters - max_counter > 1 else ''))
@@ -315,6 +318,10 @@ def extract_result(final_result, num_of_butters):
         print(*li)
         print(best_result[1])
         print(best_result[3])
+        return li
+
+
+
 
 
 def main():
@@ -337,7 +344,9 @@ def main():
 
     final_result = []
     permutation_of_butters(butter_cors, init_state, robot_cor, target_cors, result=final_result)
-    extract_result(final_result, len(butter_cors))
+    moves = extract_result(final_result, len(butter_cors))
+    time.sleep(2)
+    view.start(init_state, moves)
 
 
 if __name__ == '__main__':
