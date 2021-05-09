@@ -321,9 +321,6 @@ def extract_result(final_result, num_of_butters):
         return li
 
 
-
-
-
 def main():
     init_state = input_parser()
 

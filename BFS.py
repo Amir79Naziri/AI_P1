@@ -604,6 +604,5 @@ def main():
     view.start(init_state, moves)
 
 
-
 if __name__ == '__main__':
     main()

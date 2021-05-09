@@ -3,7 +3,7 @@ import random
 
 
 class Robot:
-    __robot_image = pygame.image.load('pic/robot-3.png')
+    __robot_image = pygame.image.load('pic/robot.png')
 
     def __init__(self, x, y):
         self.x = x
@@ -15,11 +15,11 @@ class Robot:
 
 robot = Robot(-1, -1)
 
-butter_image = pygame.image.load('pic/butter-1.png')
+butter_image = pygame.image.load('pic/Butter.png')
 target_image = pygame.image.load('pic/target.png')
 
 obstacles = [pygame.image.load('pic/bread.png'), pygame.image.load('pic/coffee.png'),
-             pygame.image.load('pic/english_breakfast.png'), pygame.image.load('pic/juice.png'),
+             pygame.image.load('pic/breakfast.png'), pygame.image.load('pic/juice.png'),
              pygame.image.load('pic/milk.png')]
 
 obstacles_state = []
@@ -87,7 +87,7 @@ def update_state(state, move):
 
 
 def redraw_window(window, state):
-    window.fill((94, 61, 21))
+    window.fill((89, 17, 17))
 
     col_counter = 120
     row_counter = 120
@@ -119,8 +119,8 @@ def redraw_window(window, state):
                 window.blit(butter_png, (j * 120, i * 120))
 
             elif 'p' in state[i][j]:
-                target_png = pygame.transform.scale(target_image, (120, 120))
-                window.blit(target_png, (j * 120, i * 120))
+                target_png = pygame.transform.scale(target_image, (160, 120))
+                window.blit(target_png, (j * 120 - 20, i * 120))
 
     pygame.display.update()
 
